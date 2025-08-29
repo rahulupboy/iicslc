@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const genAI = new GoogleGenerativeAI('AIzaSyDJhJGJGJGJGJGJGJGJGJGJGJGJGJGJGJG'); // Replace with actual API key
+const genAI = new GoogleGenerativeAI('AIzaSyD4C7drU0i3yg9vCx_UyN1kgYaNWnV3K4E');
 
 interface ProblemData {
   problem_title: string;
@@ -90,9 +90,6 @@ function generateSkillBasedFallback(
   problemStatement: string, 
   existingProblems: Array<{ problem_title: string; problem_description: string }>
 ): ProblemData {
-  const primarySkill = skills[0]?.toLowerCase() || 'programming';
-  const problemIndex = existingProblems.length;
-  
   // Skill-specific problem templates
   const skillTemplates: Record<string, ProblemData[]> = {
     'react': [
@@ -239,6 +236,9 @@ Design a comprehensive user experience for a university problem-solving platform
       }
     ]
   };
+  
+  const primarySkill = skills[0]?.toLowerCase() || 'programming';
+  const problemIndex = existingProblems.length;
 
   // Find matching templates based on primary skill
   let templates: ProblemData[] = [];

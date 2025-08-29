@@ -68,7 +68,7 @@ export const useProblemGeneration = () => {
           setCompletedProblems(i + 1);
           
           // Small delay between problems to show progress
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
         } catch (error) {
           console.error(`Error generating problem ${i + 1}:`, error);
