@@ -8,7 +8,7 @@ interface ProblemRendererProps {
 }
 
 const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
-  // Enhanced function to parse and render content with better formatting
+  // Enhanced function to parse and render content with comprehensive formatting
   const renderContent = (text: string) => {
     // First, handle code blocks (```...```)
     const codeBlockRegex = /```([\s\S]*?)```/g;
@@ -21,9 +21,19 @@ const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
       return `__CODE_BLOCK_${codeBlockIndex++}__`;
     });
     
+    // Handle tables (|...| format)
+    const tableRegex = /(\|[^\n]*\|\n)+/g;
+    const tables: string[] = [];
+    let tableIndex = 0;
+    
+    const textWithTablePlaceholders = textWithCodePlaceholders.replace(tableRegex, (match) => {
+      tables.push(match.trim());
+      return `__TABLE_${tableIndex++}__`;
+    });
+    
     // Split by block math ($$...$$)
     const blockMathRegex = /\$\$(.*?)\$\$/gs;
-    const parts = textWithCodePlaceholders.split(blockMathRegex);
+    const parts = textWithTablePlaceholders.split(blockMathRegex);
     
     return parts.map((part, index) => {
       // Even indices are regular text, odd indices are block math
@@ -54,6 +64,18 @@ const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
           }
         }
         
+        // Handle table placeholders
+        if (textPart.includes('__TABLE_')) {
+          return textPart.split(/(__TABLE_\d+__)/g).map((segment, segmentIndex) => {
+            const tableMatch = segment.match(/__TABLE_(\d+)__/);
+            if (tableMatch) {
+              const tableIndex = parseInt(tableMatch[1]);
+              return renderTable(tables[tableIndex], `${index}-${textIndex}-${segmentIndex}`);
+            }
+            return renderFormattedText(segment, `${index}-${textIndex}-${segmentIndex}`);
+          });
+        }
+        
         // Handle code block placeholders
         if (textPart.includes('__CODE_BLOCK_')) {
           return textPart.split(/(__CODE_BLOCK_\d+__)/g).map((segment, segmentIndex) => {
@@ -61,8 +83,8 @@ const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
             if (codeBlockMatch) {
               const blockIndex = parseInt(codeBlockMatch[1]);
               return (
-                <pre key={`${index}-${textIndex}-${segmentIndex}`} className="bg-muted p-4 rounded-lg my-4 overflow-x-auto">
-                  <code className="text-sm font-mono">{codeBlocks[blockIndex]}</code>
+                <pre key={`${index}-${textIndex}-${segmentIndex}`} className="bg-muted p-4 rounded-lg my-4 overflow-x-auto border border-primary/20">
+                  <code className="text-sm font-mono text-accent">{codeBlocks[blockIndex]}</code>
                 </pre>
               );
             }
@@ -73,6 +95,53 @@ const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
         return renderFormattedText(textPart, `${index}-${textIndex}`);
       });
     });
+  };
+
+  // Helper function to render tables
+  const renderTable = (tableText: string, key: string) => {
+    const rows = tableText.trim().split('\n').filter(row => row.trim());
+    if (rows.length === 0) return null;
+
+    // Parse table rows
+    const parsedRows = rows.map(row => 
+      row.split('|').map(cell => cell.trim()).filter(cell => cell !== '')
+    );
+
+    if (parsedRows.length === 0) return null;
+
+    // Assume first row is header if it looks like one
+    const hasHeader = parsedRows.length > 1 && parsedRows[1].every(cell => cell.match(/^[-:]+$/));
+    const headerRow = hasHeader ? parsedRows[0] : null;
+    const dataRows = hasHeader ? parsedRows.slice(2) : parsedRows;
+
+    return (
+      <div key={key} className="my-4 overflow-x-auto">
+        <table className="min-w-full border border-primary/20 rounded-lg overflow-hidden">
+          {headerRow && (
+            <thead className="bg-primary/10">
+              <tr>
+                {headerRow.map((cell, cellIndex) => (
+                  <th key={cellIndex} className="px-4 py-2 text-left font-semibold text-primary border-b border-primary/20">
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+          )}
+          <tbody>
+            {dataRows.map((row, rowIndex) => (
+              <tr key={rowIndex} className="hover:bg-muted/50 transition-colors">
+                {row.map((cell, cellIndex) => (
+                  <td key={cellIndex} className="px-4 py-2 border-b border-primary/10 text-sm">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   };
 
   // Helper function to render formatted text with proper line breaks and styling
@@ -89,9 +158,10 @@ const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
           if (trimmedLine.match(/^#{1,6}\s/)) {
             const level = trimmedLine.match(/^(#{1,6})/)?.[1].length || 1;
             const text = trimmedLine.replace(/^#{1,6}\s/, '');
-            const headerClass = level === 1 ? 'text-xl font-bold text-primary mt-6 mb-3' :
-                              level === 2 ? 'text-lg font-semibold text-primary mt-5 mb-2' :
-                              'text-base font-medium text-primary mt-4 mb-2';
+            const headerClass = level === 1 ? 'text-2xl font-bold text-primary mt-6 mb-4' :
+                              level === 2 ? 'text-xl font-semibold text-primary mt-5 mb-3' :
+                              level === 3 ? 'text-lg font-semibold text-primary mt-4 mb-2' :
+                              'text-base font-medium text-primary mt-3 mb-2';
             
             return (
               <React.Fragment key={lineIndex}>
@@ -105,9 +175,9 @@ const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
           if (trimmedLine.match(/^\d+\.\s/)) {
             return (
               <React.Fragment key={lineIndex}>
-                <div className="ml-4 my-1">
-                  <span className="font-medium text-accent">{trimmedLine.match(/^\d+\./)?.[0]}</span>
-                  <span className="ml-2">{trimmedLine.replace(/^\d+\.\s/, '')}</span>
+                <div className="ml-4 my-2 flex">
+                  <span className="font-bold text-accent mr-3 min-w-[1.5rem]">{trimmedLine.match(/^\d+\./)?.[0]}</span>
+                  <span className="flex-1">{processInlineFormatting(trimmedLine.replace(/^\d+\.\s/, ''))}</span>
                 </div>
                 {lineIndex < lines.length - 1 && <br />}
               </React.Fragment>
@@ -118,37 +188,86 @@ const ProblemRenderer = ({ content, className = "" }: ProblemRendererProps) => {
           if (trimmedLine.match(/^[-*]\s/)) {
             return (
               <React.Fragment key={lineIndex}>
-                <div className="ml-4 my-1">
-                  <span className="text-accent mr-2">•</span>
-                  <span>{trimmedLine.replace(/^[-*]\s/, '')}</span>
+                <div className="ml-4 my-2 flex">
+                  <span className="text-accent mr-3 font-bold">•</span>
+                  <span className="flex-1">{processInlineFormatting(trimmedLine.replace(/^[-*]\s/, ''))}</span>
                 </div>
                 {lineIndex < lines.length - 1 && <br />}
               </React.Fragment>
             );
           }
           
-          // Bold text (**text**)
-          const boldRegex = /\*\*(.*?)\*\*/g;
-          if (boldRegex.test(line)) {
-            const formattedLine = line.replace(boldRegex, '<strong class="font-semibold text-primary">$1</strong>');
-            return (
-              <React.Fragment key={lineIndex}>
-                <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
-                {lineIndex < lines.length - 1 && <br />}
-              </React.Fragment>
-            );
-          }
-          
-          // Regular text
+          // Regular text with inline formatting
           return (
             <React.Fragment key={lineIndex}>
-              {line}
+              {processInlineFormatting(line)}
               {lineIndex < lines.length - 1 && <br />}
             </React.Fragment>
           );
         })}
       </span>
     );
+  };
+
+  // Process inline formatting like **bold**, *italic*, `code`, etc.
+  const processInlineFormatting = (text: string) => {
+    // Handle inline code first (`code`)
+    const codeRegex = /`([^`]+)`/g;
+    const codeParts = text.split(codeRegex);
+    
+    return codeParts.map((part, index) => {
+      if (index % 2 === 1) {
+        // This is inline code
+        return (
+          <code key={index} className="bg-muted px-2 py-1 rounded text-accent font-mono text-sm border border-primary/20">
+            {part}
+          </code>
+        );
+      }
+      
+      // Process other formatting in non-code parts
+      return processTextFormatting(part, index);
+    });
+  };
+
+  const processTextFormatting = (text: string, baseIndex: number) => {
+    // Handle bold text (**text** or __text__)
+    const boldRegex = /(\*\*|__)(.*?)\1/g;
+    const boldParts = text.split(boldRegex);
+    
+    return boldParts.map((part, index) => {
+      // Check if this part should be bold (every 3rd element starting from index 2)
+      if (index > 0 && (index - 2) % 3 === 0) {
+        return <strong key={`${baseIndex}-${index}`} className="font-bold text-primary">{processItalicFormatting(part, `${baseIndex}-${index}`)}</strong>;
+      }
+      
+      // Skip the delimiter parts
+      if (index > 0 && (index - 1) % 3 === 0) {
+        return null;
+      }
+      
+      return processItalicFormatting(part, `${baseIndex}-${index}`);
+    }).filter(Boolean);
+  };
+
+  const processItalicFormatting = (text: string, baseKey: string) => {
+    // Handle italic text (*text* or _text_)
+    const italicRegex = /(\*|_)(.*?)\1/g;
+    const italicParts = text.split(italicRegex);
+    
+    return italicParts.map((part, index) => {
+      // Check if this part should be italic (every 3rd element starting from index 2)
+      if (index > 0 && (index - 2) % 3 === 0) {
+        return <em key={`${baseKey}-${index}`} className="italic text-accent">{part}</em>;
+      }
+      
+      // Skip the delimiter parts
+      if (index > 0 && (index - 1) % 3 === 0) {
+        return null;
+      }
+      
+      return <span key={`${baseKey}-${index}`}>{part}</span>;
+    }).filter(Boolean);
   };
 
   return (
