@@ -1,0 +1,246 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* SIH SLC Design System - Gen Z friendly bluish theme with animations */
+
+@layer base {
+  :root {
+    /* Primary brand colors - Electric Blue theme for dark coder style */
+    --primary: 213 94% 68%;
+    --primary-variant: 199 89% 48%;
+    --primary-glow: 213 94% 85%;
+    --primary-foreground: 220 26% 14%;
+
+    /* Background colors - Dark coder theme */
+    --background: 220 26% 14%;
+    --foreground: 213 31% 91%;
+
+    /* Muted colors */
+    --muted: 215 25% 27%;
+    --muted-foreground: 217 10% 64%;
+
+    /* Card colors */
+    --card: 222 30% 18%;
+    --card-foreground: 213 31% 91%;
+
+    /* Popover colors */
+    --popover: 222 30% 18%;
+    --popover-foreground: 213 31% 91%;
+
+    /* Border and input */
+    --border: 215 25% 27%;
+    --input: 215 25% 27%;
+
+    /* Secondary colors */
+    --secondary: 215 25% 27%;
+    --secondary-foreground: 213 31% 91%;
+
+    /* Accent colors - Bright cyan for highlights */
+    --accent: 180 100% 50%;
+    --accent-light: 180 100% 70%;
+    --accent-foreground: 220 26% 14%;
+
+    /* Destructive colors */
+    --destructive: 0 91% 71%;
+    --destructive-foreground: 220 26% 14%;
+
+    /* Ring and focus */
+    --ring: 213 94% 68%;
+
+    /* Success and warning */
+    --success: 142 85% 55%;
+    --success-foreground: 220 26% 14%;
+    --warning: 35 90% 65%;
+    --warning-foreground: 220 26% 14%;
+
+    /* Gradients - Coder-style dark theme */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-variant)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--background)), hsl(var(--card) / 0.5));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary) / 0.9), hsl(var(--primary-variant) / 0.8));
+    --gradient-card: linear-gradient(145deg, hsl(var(--card)), hsl(var(--background) / 0.5));
+    --gradient-accent: linear-gradient(90deg, hsl(var(--accent)), hsl(var(--accent-light)));
+    --gradient-cyber: linear-gradient(45deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary-variant)));
+    
+    /* Shadows - Neon glow effects */
+    --shadow-soft: 0 2px 8px hsl(var(--primary) / 0.15);
+    --shadow-medium: 0 8px 30px hsl(var(--primary) / 0.25);
+    --shadow-strong: 0 20px 60px hsl(var(--primary) / 0.3);
+    --shadow-glow: 0 0 30px hsl(var(--primary) / 0.4);
+    --shadow-neon: 0 0 20px hsl(var(--accent) / 0.6);
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Keep the same dark coder theme values */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background: var(--gradient-secondary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer components {
+  /* Gradient backgrounds */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .bg-gradient-cyber {
+    background: var(--gradient-cyber);
+  }
+
+  /* Shadow utilities */
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-medium {
+    box-shadow: var(--shadow-medium);
+  }
+
+  .shadow-strong {
+    box-shadow: var(--shadow-strong);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-neon {
+    box-shadow: var(--shadow-neon);
+  }
+
+  /* Animations */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.8s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.6s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.6s ease-out;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite alternate;
+  }
+
+  /* Hover effects */
+  .hover-lift {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-strong);
+  }
+
+  .hover-scale {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .hover-scale:hover {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  from {
+    box-shadow: 0 0 20px hsla(215, 85%, 60%, 0.4);
+  }
+  to {
+    box-shadow: 0 0 40px hsla(215, 85%, 60%, 0.8);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
