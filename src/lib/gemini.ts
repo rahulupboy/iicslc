@@ -13,7 +13,7 @@ export async function generateProblemStatements(
   existingProblems: Array<{ problem_title: string; problem_description: string }> = []
 ): Promise<ProblemData> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     
     // Get the user's primary skill (first in the list)
     const primarySkill = skills[0] || 'Programming';
@@ -243,9 +243,9 @@ Design a comprehensive user experience for a university problem-solving platform
   // Find matching templates based on primary skill
   let templates: ProblemData[] = [];
   
-  for (const [skillKey, skillTemplates] of Object.entries(skillTemplates)) {
+  for (const [skillKey, templatesArray] of Object.entries(skillTemplates)) {
     if (primarySkill.includes(skillKey) || skillKey.includes(primarySkill)) {
-      templates = skillTemplates;
+      templates = templatesArray;
       break;
     }
   }
