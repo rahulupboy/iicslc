@@ -30,10 +30,19 @@ export const useProblemGeneration = () => {
           setCurrentStep((i * 3) + 2);
 
           // Step 2: Generate problem using Gemini
+          // Get existing problems for this user to maintain course progression
+          const { data: userProblems } = await supabase
+            .from('day_problems')
+            .select('problem_title, problem_description')
+            .eq('user_id', userId)
+            .order('day_number');
+          
+          const existingUserProblems = userProblems || [];
+          
           const problemData = await generateProblemStatements(
             skills,
             problemStatement,
-            existingProblems
+            existingUserProblems
           );
 
           // Step 3: Save to database
@@ -59,16 +68,10 @@ export const useProblemGeneration = () => {
             throw error;
           }
 
-          // Add to existing problems for context in next generation
-          existingProblems.push({
-            problem_title: problemData.problem_title,
-            problem_description: problemData.problem_description
-          });
-
           setCompletedProblems(i + 1);
           
-          // Small delay between problems to show progress
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Increased delay between problems as requested
+          await new Promise(resolve => setTimeout(resolve, 2000));
 
         } catch (error) {
           console.error(`Error generating problem ${i + 1}:`, error);
