@@ -268,7 +268,7 @@ const Dashboard = () => {
         
         return {
           ...problem,
-          isTodaysChallenge,
+          isTodaysChallenge: problem.is_active, // Use the database flag
           isSubmitted,
           codeScore,
           videoScore
@@ -285,7 +285,7 @@ const Dashboard = () => {
       // Get all user's day problems ordered by day number
       const { data: dayProblems } = await supabase
         .from('day_problems')
-        .select('id, day_number, challenge_date')
+        .select('id, day_number, challenge_date, is_active')
         .eq('user_id', userId)
         .order('day_number');
 
@@ -298,17 +298,41 @@ const Dashboard = () => {
         .eq('user_id', userId);
 
       const submittedProblemIds = new Set(submissions?.map(s => s.day_problem_id) || []);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
 
-      // Find the first unsubmitted problem, or if all are submitted, keep the last one active
-      let activeProblems = dayProblems.filter(p => !submittedProblemIds.has(p.id));
-      let activeProblemId = activeProblems.length > 0 ? activeProblems[0].id : dayProblems[dayProblems.length - 1]?.id;
+      // Find today's challenge or the next available challenge
+      let activeProblemId = null;
+      
+      // First, try to find today's challenge (by date)
+      const todaysChallenge = dayProblems.find(p => {
+        const challengeDate = new Date(p.challenge_date);
+        challengeDate.setHours(0, 0, 0, 0);
+        return challengeDate.getTime() === today.getTime();
+      });
+      
+      if (todaysChallenge && !submittedProblemIds.has(todaysChallenge.id)) {
+        // Today's challenge exists and not submitted
+        activeProblemId = todaysChallenge.id;
+      } else {
+        // Find the first unsubmitted challenge
+        const unsubmittedProblems = dayProblems.filter(p => !submittedProblemIds.has(p.id));
+        if (unsubmittedProblems.length > 0) {
+          activeProblemId = unsubmittedProblems[0].id;
+        } else if (dayProblems.length > 0) {
+          // All submitted, keep the last one active for reference
+          activeProblemId = dayProblems[dayProblems.length - 1].id;
+        }
+      }
 
       // Set all problems to inactive first
       for (const problem of dayProblems) {
-        await supabase
-          .from('day_problems')
-          .update({ is_active: false })
-          .eq('id', problem.id);
+        if (problem.is_active) {
+          await supabase
+            .from('day_problems')
+            .update({ is_active: false })
+            .eq('id', problem.id);
+        }
       }
 
       // Set the active problem
@@ -745,17 +769,47 @@ const Dashboard = () => {
         <Card className="shadow-glow border-primary/20 bg-card/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 font-mono">
-              <Trophy className="w-5 h-5 text-accent" />
+              // Determine challenge status based on date and submission
               <span className="text-primary">Global Leaderboard</span>
+              today.setHours(0, 0, 0, 0);
             </CardTitle>
+              challengeDate.setHours(0, 0, 0, 0);
             <CardDescription className="font-mono">Top SLCIAN performers in real-time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {leaderboard.map((student, index) => (
+              const isPast = challengeDate < today;
+              const isFuture = challengeDate > today;
+              const isToday = challengeDate.getTime() === today.getTime();
+              
+              // Determine status
+              let status = '';
+              let statusColor = '';
+              
+              if (isPast) {
+                if (challenge.isSubmitted) {
+                  status = 'Completed';
+                  statusColor = 'text-success';
+                } else {
+                  status = 'Missed';
+                  statusColor = 'text-destructive';
+                }
+              } else if (isToday && !challenge.isTodaysChallenge) {
+                // Today's challenge but not active (probably submitted)
+                status = challenge.isSubmitted ? 'Completed Today' : 'Available Today';
+                statusColor = challenge.isSubmitted ? 'text-success' : 'text-accent';
+              } else if (isFuture) {
+                        <Badge variant="secondary" className="font-mono">
+                          Day {challenge.day_number}
                 <div 
-                  key={index}
-                  className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/10 transition-colors border border-primary/10 font-mono"
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {challengeDate.toLocaleDateString('en-IN', { 
+                            day: '2-digit', 
+                            month: 'short',
+                            year: '2-digit'
+                          })}
+                        </Badge>
+                    challenge.isSubmitted ? 'border-success/30 bg-success/5' : 
+                    isPast && !challenge.isSubmitted ? 'border-destructive/30 bg-destructive/5' :
+                      <p className={`text-sm mt-1 font-medium ${statusColor}`}>
+                        {status}
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border ${
@@ -766,7 +820,7 @@ const Dashboard = () => {
                     }`}>
                       {student.rank}
                     </div>
-                    <div>
+                        <Badge variant="default" className="font-mono bg-success text-success-foreground">✓ Submitted</Badge>
                       <p className="font-medium text-foreground">{student.name}</p>
                     </div>
                   </div>
