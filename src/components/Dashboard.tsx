@@ -15,7 +15,6 @@ const Dashboard = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [currentDay, setCurrentDay] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [activeUsers, setActiveUsers] = useState(0);
   const [submissionFormOpen, setSubmissionFormOpen] = useState(false);
@@ -27,19 +26,7 @@ const Dashboard = () => {
   const [isGeneratingNext, setIsGeneratingNext] = useState(false);
   const [showGenerateButton, setShowGenerateButton] = useState(false);
 
-  // Real-time day calculation
-  const updateCurrentDay = () => {
-    const currentDate = new Date();
-    const preparationStartDate = new Date('2024-09-30');
-    const daysDiff = Math.ceil((currentDate.getTime() - preparationStartDate.getTime()) / (1000 * 3600 * 24));
-    setCurrentDay(Math.max(1, daysDiff));
-  };
-
   useEffect(() => {
-    // Initialize current day and set up interval for real-time updates
-    updateCurrentDay();
-    const dayInterval = setInterval(updateCurrentDay, 60000); // Update every minute
-
     loadDashboardData();
     
     // Set up real-time updates for all tables
@@ -94,7 +81,6 @@ const Dashboard = () => {
 
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(dayInterval);
       clearInterval(networkInterval);
     };
   }, []);
@@ -296,25 +282,41 @@ const Dashboard = () => {
 
   const updateActiveChallengeStatusInDb = async (userId: string) => {
     try {
-      // Get all user's day problems
+      // Get all user's day problems ordered by day number
       const { data: dayProblems } = await supabase
         .from('day_problems')
-        .select('id, challenge_date')
-        .eq('user_id', userId);
+        .select('id, day_number, challenge_date')
+        .eq('user_id', userId)
+        .order('day_number');
 
       if (!dayProblems) return;
 
-      const today = new Date().toISOString().split('T')[0];
+      // Get all submissions for this user
+      const { data: submissions } = await supabase
+        .from('submissions')
+        .select('day_problem_id')
+        .eq('user_id', userId);
 
-      // Update all problems to set is_active based on today's date
+      const submittedProblemIds = new Set(submissions?.map(s => s.day_problem_id) || []);
+
+      // Find the first unsubmitted problem, or if all are submitted, keep the last one active
+      let activeProblems = dayProblems.filter(p => !submittedProblemIds.has(p.id));
+      let activeProblemId = activeProblems.length > 0 ? activeProblems[0].id : dayProblems[dayProblems.length - 1]?.id;
+
+      // Set all problems to inactive first
       for (const problem of dayProblems) {
-        const challengeDateString = new Date(problem.challenge_date).toISOString().split('T')[0];
-        const shouldBeActive = challengeDateString === today;
-
         await supabase
           .from('day_problems')
-          .update({ is_active: shouldBeActive })
+          .update({ is_active: false })
           .eq('id', problem.id);
+      }
+
+      // Set the active problem
+      if (activeProblemId) {
+        await supabase
+          .from('day_problems')
+          .update({ is_active: true })
+          .eq('id', activeProblemId);
       }
     } catch (error) {
       console.error('Error updating active challenge status:', error);
@@ -474,7 +476,7 @@ const Dashboard = () => {
               <h1 className="text-4xl font-bold bg-gradient-cyber bg-clip-text text-transparent font-mono">SIH SLC</h1>
             </div>
             <p className="text-muted-foreground font-mono">
-              <span className="text-accent">Day {currentDay}</span> of SIH Protocol • 
+              <span className="text-accent">Day {challenges.find(c => c.isTodaysChallenge)?.day_number || 1}</span> of SIH Protocol • 
               <span className="text-primary ml-2">
                 {new Date().toLocaleDateString('en-US', { 
                   weekday: 'long', 
@@ -512,7 +514,7 @@ const Dashboard = () => {
                       <span className="text-primary">Today's Challenge</span>
                     </CardTitle>
                     <CardDescription className="font-mono">
-                      Day {currentDay} • Deadline: 11:59 PM IST
+                      Day {challenges.find(c => c.isTodaysChallenge)?.day_number || 1} • Deadline: 11:59 PM IST
                     </CardDescription>
                   </div>
                   <Badge variant="secondary" className="animate-pulse font-mono border border-accent/30">
