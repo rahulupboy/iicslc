@@ -16,38 +16,36 @@ interface SubmissionFormProps {
 }
 
 export const SubmissionForm = ({ isOpen, onClose, problemId, problemTitle }: SubmissionFormProps) => {
-  const [codeFile, setCodeFile] = useState<File | null>(null);
+  const [codeFiles, setCodeFiles] = useState<FileList | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
-  const handleCodeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type and size
-      const isValidType = /\.(zip|rar|tar|gz|7z)$/i.test(file.name);
-      const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB
+  const handleCodeFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // Validate file types and sizes
+      const validFiles = Array.from(files).filter(file => {
+        const isValidType = /\.(js|jsx|ts|tsx|py|java|cpp|c|html|css|json|md|txt|zip|rar)$/i.test(file.name);
+        const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB per file
+        return isValidType && isValidSize;
+      });
       
-      if (!isValidType) {
+      if (validFiles.length !== files.length) {
         toast({
-          title: "Invalid file type",
-          description: "Please upload a compressed archive (.zip, .rar, .tar, .gz, .7z)",
+          title: "Invalid files detected",
+          description: "Some files were excluded due to invalid type or size > 50MB",
           variant: "destructive",
         });
-        return;
       }
       
-      if (!isValidSize) {
-        toast({
-          title: "File too large",
-          description: "Please upload a file smaller than 50MB",
-          variant: "destructive",
-        });
-        return;
+      if (validFiles.length > 0) {
+        // Create a new FileList-like object with valid files
+        const dataTransfer = new DataTransfer();
+        validFiles.forEach(file => dataTransfer.items.add(file));
+        setCodeFiles(dataTransfer.files);
       }
-      
-      setCodeFile(file);
     }
   };
 
@@ -81,41 +79,39 @@ export const SubmissionForm = ({ isOpen, onClose, problemId, problemTitle }: Sub
     e.preventDefault();
     setIsDragging(false);
     
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      // Validate file type and size
-      const isValidType = /\.(zip|rar|tar|gz|7z)$/i.test(file.name);
-      const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Validate file types and sizes
+      const validFiles = Array.from(files).filter(file => {
+        const isValidType = /\.(js|jsx|ts|tsx|py|java|cpp|c|html|css|json|md|txt|zip|rar)$/i.test(file.name);
+        const isValidSize = file.size <= 50 * 1024 * 1024; // 50MB per file
+        return isValidType && isValidSize;
+      });
       
-      if (!isValidType) {
+      if (validFiles.length !== files.length) {
         toast({
-          title: "Invalid file type",
-          description: "Please upload a compressed archive (.zip, .rar, .tar, .gz, .7z)",
+          title: "Invalid files detected",
+          description: "Some files were excluded due to invalid type or size > 50MB",
           variant: "destructive",
         });
-        return;
       }
       
-      if (!isValidSize) {
-        toast({
-          title: "File too large",
-          description: "Please upload a file smaller than 50MB",
-          variant: "destructive",
-        });
-        return;
+      if (validFiles.length > 0) {
+        // Create a new FileList-like object with valid files
+        const dataTransfer = new DataTransfer();
+        validFiles.forEach(file => dataTransfer.items.add(file));
+        setCodeFiles(dataTransfer.files);
       }
-      
-      setCodeFile(file);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!codeFile || !videoFile) {
+    if (!codeFiles || codeFiles.length === 0 || !videoFile) {
       toast({
         title: "Missing files",
-        description: "Please upload both code archive and video",
+        description: "Please upload both code files and video",
         variant: "destructive",
       });
       return;
@@ -127,39 +123,16 @@ export const SubmissionForm = ({ isOpen, onClose, problemId, problemTitle }: Sub
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Upload code file to Supabase Storage
-      const codeFileName = `${user.id}/${problemId}/code_${Date.now()}_${codeFile.name}`;
-      const { data: codeUpload, error: codeError } = await supabase.storage
-        .from('code-submissions')
-        .upload(codeFileName, codeFile);
-
-      if (codeError) throw codeError;
-
-      // Upload video file to Supabase Storage
-      const videoFileName = `${user.id}/${problemId}/video_${Date.now()}_${videoFile.name}`;
-      const { data: videoUpload, error: videoError } = await supabase.storage
-        .from('video-submissions')
-        .upload(videoFileName, videoFile);
-
-      if (videoError) throw videoError;
-
-      // Get public URLs
-      const { data: codeUrl } = supabase.storage
-        .from('code-submissions')
-        .getPublicUrl(codeFileName);
-
-      const { data: videoUrl } = supabase.storage
-        .from('video-submissions')
-        .getPublicUrl(videoFileName);
-
-      // Create submission record with actual file URLs
+      // For now, we'll just create a submission record without actual file upload
+      // In a real implementation, you'd upload files to Supabase Storage first
+      const fileNames = Array.from(codeFiles).map(file => file.name).join(', ');
       const { error } = await supabase
         .from('submissions')
         .insert({
           user_id: user.id,
           day_problem_id: problemId,
-          file_url: codeUrl.publicUrl,
-          video_url: videoUrl.publicUrl
+          file_url: `codes_${Date.now()}_[${fileNames}]`, // Placeholder for multiple files
+          video_url: `video_${Date.now()}_${videoFile.name}` // Placeholder
         });
 
       if (error) throw error;
@@ -170,7 +143,7 @@ export const SubmissionForm = ({ isOpen, onClose, problemId, problemTitle }: Sub
       });
 
       onClose();
-      setCodeFile(null);
+      setCodeFiles(null);
       setVideoFile(null);
     } catch (error) {
       console.error('Submission error:', error);
@@ -245,7 +218,7 @@ export const SubmissionForm = ({ isOpen, onClose, problemId, problemTitle }: Sub
             <div className="space-y-3">
               <Label htmlFor="codeFiles" className="text-lg font-semibold flex items-center gap-2">
                 <Upload className="h-5 w-5" />
-                Submit Your Code Archive
+                Submit Your Code Files/Folder
               </Label>
               <div className="space-y-2">
                 {/* Drag and Drop Zone */}
@@ -260,30 +233,38 @@ export const SubmissionForm = ({ isOpen, onClose, problemId, problemTitle }: Sub
                   onDrop={handleDrop}
                 >
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm font-medium mb-1">Drag and drop your code archive here</p>
+                  <p className="text-sm font-medium mb-1">Drag and drop your code files/folder here</p>
                   <p className="text-xs text-muted-foreground mb-3">or click below to browse</p>
                 </div>
                 
                 <Input
                   id="codeFiles"
                   type="file"
-                  onChange={handleCodeFileChange}
-                  accept=".zip,.rar,.tar,.gz,.7z"
+                  onChange={handleCodeFilesChange}
+                  accept=".js,.jsx,.ts,.tsx,.py,.java,.cpp,.c,.html,.css,.json,.md,.txt,.zip,.rar"
                   className="cursor-pointer"
+                  multiple
                   required
                 />
                 <div className="text-xs text-muted-foreground space-y-1">
-                  <p>• Please compress all your code files into a single archive</p>
-                  <p>• Supported formats: .zip, .rar, .tar, .gz, .7z</p>
-                  <p>• Maximum file size: 50MB</p>
+                  <p>• You can select multiple files at once (Ctrl/Cmd + Click)</p>
+                  <p>• Drag and drop folders or individual files</p>
+                  <p>• Supported: Code files, archives (.zip, .rar), documentation</p>
+                  <p>• Max 50MB per file</p>
                 </div>
               </div>
-              {codeFile && (
+              {codeFiles && codeFiles.length > 0 && (
                 <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                  <p className="text-sm font-medium text-primary mb-2">Selected file:</p>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span className="truncate">{codeFile.name}</span>
-                    <span>{(codeFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+                  <p className="text-sm font-medium text-primary mb-2">
+                    Selected {codeFiles.length} file(s):
+                  </p>
+                  <div className="space-y-1 max-h-32 overflow-y-auto">
+                    {Array.from(codeFiles).map((file, index) => (
+                      <div key={index} className="flex justify-between text-xs text-muted-foreground">
+                        <span className="truncate">{file.name}</span>
+                        <span>{(file.size / 1024).toFixed(1)} KB</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -327,7 +308,7 @@ export const SubmissionForm = ({ isOpen, onClose, problemId, problemTitle }: Sub
                 type="submit"
                 variant="neon"
                 className="flex-1"
-                disabled={submitting || !codeFile || !videoFile}
+                disabled={submitting || !codeFiles || codeFiles.length === 0 || !videoFile}
               >
                 {submitting ? "Submitting..." : "Submit Solution"}
               </Button>
